@@ -1,17 +1,38 @@
-use sui::event;
+module TranNotiBot::LockContract {
+    use sui::object;
+    use sui::tx_context;
+    use sui::event;
 
-public fun lock<T: key + store>(obj: T, ctx: &mut TxContext): (Locked<T>, Key) {
-    let key = Key { id: object::new(ctx) };
-    let mut lock = Locked {
-        id: object::new(ctx),
-        key: object::id(&key),
-    };
-    event::emit(LockCreated {
-        lock_id: object::id(&lock),
-        key_id: object::id(&key),
-        creator: ctx.sender(),
-        item_id: object::id(&obj),
-    });
-    dof::add(&mut lock.id, LockedObjectKey {}, obj);
-    (lock, key)
+    struct Key has key, store {
+        id: object::ID,
+    }
+
+    struct Locked<T: key + store> has key, store {
+        id: object::ID,
+        key: object::ID,
+    }
+
+    struct LockCreated has copy, drop, store {
+        lock_id: object::ID,
+        key_id: object::ID,
+        creator: address,
+        item_id: object::ID,
+    }
+
+    public fun lock<T: key + store>(obj: T, ctx: &mut tx_context::TxContext): (Locked<T>, Key) {
+        let key = Key { id: object::new(ctx) };
+        let lock = Locked {
+            id: object::new(ctx),
+            key: key.id,
+        };
+
+        event::emit(LockCreated {
+            lock_id: lock.id,
+            key_id: key.id,
+            creator: tx_context::sender(ctx),
+            item_id: object::id(&obj),
+        });
+
+        (lock, key)
+    }
 }
