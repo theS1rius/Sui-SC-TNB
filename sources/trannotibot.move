@@ -1,38 +1,30 @@
-module TranNotiBot::LockContract {
-    use sui::object;
-    use sui::tx_context;
+module TranNotiBot::TransactionListener {
     use sui::event;
+    use sui::tx_context;
+    use std::debug;
 
-    struct Key has key, store {
-        id: object::ID,
+    /// 定義自訂事件結構
+    public struct TransactionEvent has copy, drop {
+        sender: address,
+        amount: u64,
+        timestamp: u64,
     }
 
-    struct Locked<T: key + store> has key, store {
-        id: object::ID,
-        key: object::ID,
-    }
-
-    struct LockCreated has copy, drop, store {
-        lock_id: object::ID,
-        key_id: object::ID,
-        creator: address,
-        item_id: object::ID,
-    }
-
-    public fun lock<T: key + store>(obj: T, ctx: &mut tx_context::TxContext): (Locked<T>, Key) {
-        let key = Key { id: object::new(ctx) };
-        let lock = Locked {
-            id: object::new(ctx),
-            key: key.id,
+    /// 發送交易事件
+    public fun emit_transaction_event(sender: address, amount: u64, ctx: &mut TxContext) {
+        let event = TransactionEvent {
+            sender,
+            amount,
+            timestamp: 0,
         };
+        event::emit(event);
+        debug::print(&event); // 打印事件資訊到本地控制台
+    }
 
-        event::emit(LockCreated {
-            lock_id: lock.id,
-            key_id: key.id,
-            creator: tx_context::sender(ctx),
-            item_id: object::id(&obj),
-        });
-
-        (lock, key)
+    /// 測試函數：模擬交易並觸發事件
+    public fun simulate_transaction(ctx: &mut TxContext) {
+        let sender = tx_context::sender(ctx);
+        let amount = 100; // 模擬的交易金額
+        emit_transaction_event(sender, amount, ctx);
     }
 }
